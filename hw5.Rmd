@@ -1,0 +1,94 @@
+---
+title: "hw5"
+output: html_document
+---
+
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+
+```{r}
+penguins <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-15/penguins.csv')
+```
+
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+library(umap)
+```
+
+```{r}
+      
+data("penguins")
+
+# removing NA
+penguins_complete <- penguins %>%
+  select(species, bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g) %>%
+  na.omit() 
+
+# only selecting key features
+penguin_features <- penguins_complete %>%
+  select(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g)
+
+penguin_scaled <- scale(penguin_features)
+
+penguin_labels <- penguins_complete$species
+```
+
+```{r}
+
+# set seeds for reproducability
+set.seed(1) 
+# UMAP 
+umap_results <- umap(penguin_scaled, n_components = 2, n_neighbors = 15, min_dist = 0.1)
+
+umap_coords <- as.data.frame(umap_results$layout)
+colnames(umap_coords) <- c("UMAP1", "UMAP2")
+
+set.seed(2)
+#K-Means
+kmeans_results <- kmeans(penguin_scaled, centers = 3, nstart = 25) 
+
+cluster_assignments <- kmeans_results$cluster
+```
+
+```{r}
+# combine specie lables and kmeans findings
+plot_data <- umap_coords %>%
+  mutate(
+    species = penguin_labels,
+    kmeans_cluster = factor(cluster_assignments)
+  )
+
+plot1 <- ggplot(plot_data, aes(x = UMAP1, y = UMAP2, color = species)) +
+  geom_point(alpha = 0.8, size = 2) +
+  labs(
+    title = "Penguin Species Projected onto 2D UMAP Space",
+    subtitle = "Based on bill length, bill depth, flipper length, and body mass",
+    x = "UMAP Dimension 1",
+    y = "UMAP Dimension 2",
+    color = "True Species"
+  ) +
+  theme_minimal() +
+  scale_color_viridis_d() # Or another nice color scale
+    
+print(plot1)
+
+plot2 <- ggplot(plot_data, aes(x = UMAP1, y = UMAP2, color = kmeans_cluster)) +
+  geom_point(alpha = 0.8, size = 2) +
+  labs(
+    title = "K-Means Clusters Projected onto 2D UMAP Space",
+    subtitle = "Clustering based on scaled measurements; projection via UMAP",
+    x = "UMAP Dimension 1",
+    y = "UMAP Dimension 2",
+    color = "K-Means Cluster"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") # different colors
+
+print(plot2)
+```
+
+
